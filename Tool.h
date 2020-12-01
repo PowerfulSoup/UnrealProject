@@ -15,6 +15,7 @@ public:
 	// Sets default values for this actor's properties
 	ATool();
 
+	//Components
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Tool")
 	class USkeletalMeshComponent* SkeletalMesh;
 
@@ -36,8 +37,23 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tool")
 		AController* ToolInstigator;
 
-	bool bUsesAmmo;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tool")
+		FName ToolName;
 
+	bool bIsEquippedInRightHand;
+
+	//Combat Variables
+	bool bUsesAmmo;
+	float Damage;
+	TArray<ACharacter*> AffectedCharacters;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tool | Combat")
+	TSubclassOf<UDamageType> DamageTypeClass;
+
+	//Other Variables
+	bool bIsActive;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tool")
 	class AMain* ToolOwner;
 
 protected:
@@ -48,10 +64,10 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
-	UFUNCTION()
+	UFUNCTION(BlueprintCallable)
 		virtual void PrimaryFunction();
 
-	UFUNCTION()
+	UFUNCTION(BlueprintCallable)
 		virtual void SecondaryFunction();
 
 	UFUNCTION()
@@ -60,6 +76,7 @@ public:
 	UFUNCTION()
 		virtual void OnOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
+	UFUNCTION()
 		virtual void Equip(class AMain* Char);
 
 	UFUNCTION(BlueprintCallable)
@@ -69,5 +86,8 @@ public:
 		virtual void UnSheathe();
 
 	FORCEINLINE virtual void SetInstigator(AController* Inst) { ToolInstigator = Inst; } 
+
+	UFUNCTION()
+		virtual void SetToolOwner(AMain* Char);
 
 };
