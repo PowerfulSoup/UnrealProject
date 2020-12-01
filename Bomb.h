@@ -13,11 +13,13 @@ UCLASS()
 class RPG_API ABomb : public ATool
 {
 	GENERATED_BODY()
-
-
 public:
 	ABomb();
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bomb")
+		class USphereComponent* ExplosionRadius;
+
+	FTimerHandle FuseTimer;
 
 protected:
 
@@ -36,4 +38,8 @@ public:
 	virtual void Equip(class AMain* Char) override;
 
 	virtual void SetInstigator(AController* Inst) override;
+
+	void BeginCountDown();
+
+	void Detonate();
 };
