@@ -64,6 +64,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Controller")
 	class AMainPlayerController* MainPlayerController;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
+		bool bIsZoomed;
+
 	//Enums
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Enums")
 	EMovementStatus MovementStatus;
@@ -122,11 +125,15 @@ public:
 		class ALockedDoor* LockedDoorInRange;
 
 	//Combat Varibles
+	UPROPERTY(BlueprintReadOnly)
 	bool bAttacking;
 
 	UPROPERTY(BlueprintReadOnly)
 	bool bBlocking;
 
+	bool bShouldLoopBlock;
+
+	UPROPERTY(BlueprintReadOnly)
 	bool bLMBDown;
 
 	bool bRMBDown;
@@ -149,6 +156,8 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Combat")
 		FVector CombatTargetLocation;
 
+	bool bLockedOn;
+
 	//Item Variables
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Items")
 	class AWeapon* EquippedWeapon;
@@ -159,15 +168,16 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Items")
 	class AItem* ActiveOverlappingItem;
 
-	  //Tool Variables
+	//Tool Variables
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tools")
 		class ATool* CurrentActiveTool;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tools")
 		ATool* ToolInSlotOne;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tools")
-		ATool* ToolInSlotTwo;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tools")//use instead of toolinslotone?
+		TSubclassOf<ATool> ToolToUse;
+	
 
 
 protected:
@@ -217,16 +227,32 @@ public:
 	class UAnimMontage* CombatMontage;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Anims")
+		UAnimMontage* SwordMontage;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Anims")
 		UAnimMontage* WorldMontage;
+
+	//UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Anims")
+	//	UAnimMontage* ToolMontage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anims")
+		UAnimMontage* CurrentToolMontage;
+
+	UFUNCTION(BlueprintCallable)
+		void SetCurrentToolMontage(UAnimMontage* MontageToSet);
 
 	//Combat Functions
 	void Attack();
-
 	UFUNCTION(BlueprintCallable)
 	void AttackEnd();
 
-	void Block();
+	UFUNCTION(BlueprintImplementableEvent)
+	void JumpAttack();
 
+	UFUNCTION(BlueprintCallable)
+	void JumpAttackMoveForward(float Value);
+
+	void Block();
 	UFUNCTION(BlueprintCallable)
 	void BlockEnd();
 
@@ -235,8 +261,6 @@ public:
 
 	void RMBDown();
 	void RMBUp();
-
-	void DecrementHealth(float Amount);
 
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
 
@@ -249,8 +273,11 @@ public:
 	UFUNCTION(BlueprintCallable)
 		void DeathEnd();
 
-	UFUNCTION()
-		void UpdateCombatTarget();
+	void UpdateCombatTarget(AActor* Target);
+	void UpdateCombatTarget();
+
+	UFUNCTION(BlueprintCallable)
+		void TriggerToUpdateCombatTarget(AActor* Target);
 
 	UFUNCTION(BlueprintCallable)
 		void PlaySwingSound();
@@ -262,7 +289,18 @@ public:
 	void SetEquippedShield(AShield* ShieldToSet);
 	FORCEINLINE AShield* GetEquippedShield() { return EquippedShield; }
 
+	//TOOL Functions
 
+	UFUNCTION(BlueprintCallable)
+	void SetCurrentActiveTool(ATool* Tool);
+	UFUNCTION(BlueprintCallable)
+	void EquipToolSlotOne();
+	void PutAwayEquipment();
+	void SetToolSlotOne(UClass* Tool);
+	UFUNCTION(BlueprintCallable)
+	void PrimaryToolFunction();
+	UFUNCTION(BlueprintCallable)
+	void SecondaryToolFunction();
 
 
 	//Other inline Methods
@@ -277,8 +315,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
 		TSubclassOf<AEnemy> EnemyFilter;
 
-	FORCEINLINE	void SetCombatTarget(AEnemy* Target) { CombatTarget = Target; }
-	FORCEINLINE	void SetHasCombatTarget(bool HasTarget) { bHasCombatTarget = HasTarget; }
+	UFUNCTION(BlueprintCallable)
+	void SetCombatTarget(AEnemy* Target);
+
+	UFUNCTION(BlueprintCallable)
+	void SetHasCombatTarget(bool HasTarget);
 
 	//PUZZLE FUNCTIONS
 
@@ -290,12 +331,8 @@ public:
 
 	UFUNCTION()
 		void UnlockDoor();
-    
-   //TOOL Functions
-	void SetCurrentActiveTool(ATool* Tool);
-	void EquipToolSlotOne();
-	void EquipToolSlotTwo();
-	void PutAwayEquipment();
-	void SetToolSlotOne(ATool* Tool);
-	void SetToolSlotTwo(ATool* Tool);
+
+	UFUNCTION()
+		void ToggleZoomCamera();
+
 };
