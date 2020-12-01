@@ -21,6 +21,7 @@
 #include "Shield.h"
 #include "Block.h"
 #include "LockedDoor.h"
+#include "Components/SphereComponent.h"
 #include "Tool.h"
 
 
@@ -40,7 +41,6 @@ AMain::AMain()
 	CameraBoom->CameraLagSpeed = 5.f;
 	CameraBoom->CameraLagMaxDistance = 50.f;
 
-
 	GetCapsuleComponent()->SetCapsuleSize(36.f, 102.f, true);
 	
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
@@ -53,6 +53,7 @@ AMain::AMain()
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationRoll = false;
+	bIsZoomed = false;
 
 	//Configure Character movement
 	GetCharacterMovement()->bOrientRotationToMovement = true;
@@ -87,13 +88,17 @@ AMain::AMain()
 	bRMBDown = false;
 	bAttacking = false;
 	bBlocking = false;
-	InterpSpeed = 15.f;
+	InterpSpeed = 30.f;
 	bInterpToEnemy = false;
 	bHasCombatTarget = false;
 
 	//Puzzles
 	bIsPushing = false;
 	KeyCount = 0;
+
+	//tools
+
+	
 }
 
 // Called when the game starts or when spawned
@@ -102,8 +107,9 @@ void AMain::BeginPlay()
 	Super::BeginPlay();
 
 	MainPlayerController = Cast<AMainPlayerController>(GetController());
+	Health = 75.f;
 
-
+	CurrentToolMontage = WorldMontage;
 }
 
 // Called every frame
@@ -223,14 +229,6 @@ void AMain::Tick(float DeltaTime)
 		break;
 	}
 
-	if (bInterpToEnemy && CombatTarget)
-	{
-		FRotator LookAtYaw = GetLookAtRotationYaw(CombatTarget->GetActorLocation());
-		FRotator InterpRotation = FMath::RInterpTo(GetActorRotation(), LookAtYaw, DeltaTime, InterpSpeed);
-
-		SetActorRotation(InterpRotation);
-	}
-
 	if (CombatTarget)
 	{
 		CombatTargetLocation = CombatTarget->GetActorLocation();
@@ -238,8 +236,11 @@ void AMain::Tick(float DeltaTime)
 		{
 			MainPlayerController->EnemyLocation = CombatTargetLocation;
 		}
-	}
+		FRotator LookAtYaw = GetLookAtRotationYaw(CombatTarget->GetActorLocation());
+		FRotator InterpRotation = FMath::RInterpTo(GetActorRotation(), LookAtYaw, DeltaTime, InterpSpeed);
 
+		SetActorRotation(InterpRotation);
+	}
 }
 
 // Called to bind functionality to input
@@ -271,16 +272,13 @@ void AMain::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 
 	PlayerInputComponent->BindAction("Tool1", IE_Pressed, this, &AMain::EquipToolSlotOne);
 
-	PlayerInputComponent->BindAction("Tool2", IE_Pressed, this, &AMain::EquipToolSlotTwo);
-
 	PlayerInputComponent->BindAction("PutAwayItem", IE_Pressed, this, &AMain::PutAwayEquipment);
-
 }
 
 void AMain::MoveForward(float Value)
 {
 	bMovingForward = false;
-	if ((Controller != nullptr) && (Value != 0.0f) && (!bBlocking) && (!bAttacking) && (MovementStatus != EMovementStatus::EMS_Dead))
+	if ((Controller != nullptr) && (Value != 0.0f) && (!bIsZoomed) &&(!bBlocking) && (!bAttacking) && (MovementStatus != EMovementStatus::EMS_Dead))
 	{
 		//Find out which way is fwd
 			const FRotator Rotation = Controller->GetControlRotation();
@@ -298,7 +296,7 @@ void AMain::MoveRight(float Value)
 	//Find out which way is right
 
 	bMovingRight = false;
-	if ((Controller != nullptr) && (Value != 0.0f) && (!bAttacking) && (!bBlocking) && (MovementStatus != EMovementStatus::EMS_Dead) && (MovementStatus != EMovementStatus::EMS_Dead))
+	if ((Controller != nullptr) && (Value != 0.0f) && (!bIsZoomed) && (!bAttacking) && (!bBlocking) && (MovementStatus != EMovementStatus::EMS_Dead) && (MovementStatus != EMovementStatus::EMS_Dead))
 	{
 		const FRotator Rotation = Controller->GetControlRotation();
 		const FRotator YawRotation(0.f, Rotation.Yaw, 0.f);
@@ -342,22 +340,25 @@ void AMain::LMBDown()
 		break;
 
 	case EEquipmentStatus::EES_SwordAndShield:
-		if (EquippedWeapon)
+		if (EquippedWeapon && !bBlocking)
 		{
+
 			Attack();
 		}
 		break;
 
 	case EEquipmentStatus::EES_Tool:
+		if (CurrentActiveTool)
+		{
+			PrimaryToolFunction();
+		}
 		break;
+
 	case EEquipmentStatus::EES_MAX:
 		break;
 	default:
 		break;
 	}
-
-
-
 }
 
 void AMain::LMBUp()
@@ -370,9 +371,28 @@ void AMain::RMBDown()
 	bRMBDown = true;
 	if (MovementStatus == EMovementStatus::EMS_Dead) return;
 
-	if (EquippedShield)
+	switch (EquipmentStatus)
 	{
-		Block();
+	case EEquipmentStatus::EES_Unarmed:
+		break;
+	case EEquipmentStatus::EES_SwordAndShield:
+		if (EquippedShield && !bAttacking)
+		{
+			Block();
+		}
+		break;
+
+	case EEquipmentStatus::EES_Tool:
+		if (CurrentActiveTool)
+		{
+			SecondaryToolFunction();
+		}
+		break;
+
+	case EEquipmentStatus::EES_MAX:
+		break;
+	default:
+		break;
 	}
 }
 
@@ -383,19 +403,23 @@ void AMain::RMBUp()
 
 void AMain::AttackEnd()
 {
-	bAttacking = false; 
-	SetInterpToEnemy(false);
+	//if (bLMBDown)
+	//{
+	//	Attack();
+	//}
 
-	if (bLMBDown)
+	if (!bLMBDown)
 	{
-		Attack();
+		bAttacking = false; 
+		SetInterpToEnemy(false);
+		GetMesh()->GetAnimInstance()->StopSlotAnimation(.25f, "Combat");
 	}
 }
 
 void AMain::BlockEnd()
 {
 	if (bRMBDown) {
-
+		bShouldLoopBlock = true;
 		Block();
 	}
 
@@ -413,6 +437,7 @@ void AMain::BlockEnd()
 		}
 
 		bBlocking = false;
+		bShouldLoopBlock = false;
 	}
 }
 
@@ -438,31 +463,37 @@ void AMain::Attack()
 {
 	if (!bAttacking && !bBlocking && MovementStatus != EMovementStatus::EMS_Dead)
 	{
-		bAttacking = true; 
-		SetInterpToEnemy(true); 
+			bAttacking = true;
+			SetInterpToEnemy(true);
 
-		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+			UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 
-		if (AnimInstance && CombatMontage)
-		{
-			//int32 Selection = FMath::RandRange(0, 1);
-			//switch (Selection)
-			//{
-			//case 0:
-				AnimInstance->Montage_Play(CombatMontage, 2.1f);
-				AnimInstance->Montage_JumpToSection(FName("Attack_1"), CombatMontage);
-			//	break;
-			//case 1:
-			//	AnimInstance->Montage_Play(CombatMontage, 2.1f);
-			//	AnimInstance->Montage_JumpToSection(FName("Attack_2"), CombatMontage);
-			//	break;
-			//default:
-			//	;
-				//break;
-			//}
-		}
+			if (AnimInstance)
+			{
 
+				if (bShiftKeyDown)
+				{
+					AnimInstance->Montage_Play(SwordMontage, 1.f);
+					AnimInstance->Montage_JumpToSection(FName("OverheadAttack"), SwordMontage);
+					JumpAttack();
+
+				}
+				else
+				{
+					AnimInstance->Montage_Play(SwordMontage, 1.f);
+					AnimInstance->Montage_JumpToSection(FName("Attack1"), SwordMontage);
+				}
+			}	
 	}
+}
+
+void AMain::JumpAttackMoveForward(float Value)
+{
+	const FRotator Rotation = Controller->GetControlRotation();
+	const FRotator YawRotation(0.f, Rotation.Yaw, 0.f);
+	const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+
+	AddMovementInput(Direction, Value);
 }
 
 void AMain::Block()
@@ -470,13 +501,14 @@ void AMain::Block()
 	{
 		//if Player was not already blocking or attacking
 		if (EquipmentStatus != EEquipmentStatus::EES_Unarmed && !bBlocking && !bAttacking && MovementStatus != EMovementStatus::EMS_Dead) {
+
 			bBlocking = true;
-			SetInterpToEnemy(true);
+			//SetInterpToEnemy(true);
 
 			//Play the "Going To Block" Animation
 			UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 
-			if (AnimInstance && CombatMontage) 
+			if (AnimInstance && CombatMontage && bShouldLoopBlock) 
 			{
 
 				AnimInstance->Montage_Play(CombatMontage, 1.0f);
@@ -498,12 +530,6 @@ void AMain::Block()
 	}
 }
 
-void AMain::DecrementHealth(float Amount)
-{
-
-
-}
-	
 void AMain::Die()
 {
 	if (MovementStatus == EMovementStatus::EMS_Dead) return;
@@ -521,6 +547,7 @@ void AMain::Jump()
 	if (MovementStatus != EMovementStatus::EMS_Dead)
 	{
 		Super::Jump();
+
 	}
 }
 
@@ -608,47 +635,63 @@ float AMain::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEve
 
 void AMain::UpdateCombatTarget()
 {
-	TArray<AActor*> OverlappingActors;
-	GetOverlappingActors(OverlappingActors, EnemyFilter);
+	UE_LOG(LogTemp, Warning, TEXT("overloaded combat target"));
 
-	if (OverlappingActors.Num() == 0)
-	{
-		if (MainPlayerController)
-		{
-			MainPlayerController->RemoveEnemyHealthBar();
-			//Put in reset camera here
-		}
-		return;
-	}
-
-	AEnemy* ClosestEnemy = Cast<AEnemy>(OverlappingActors[0]);
-	if (ClosestEnemy)
-	{
-		FVector Location = GetActorLocation();
-		float MinDistance = (ClosestEnemy->GetActorLocation() - Location).Size();
-
-		for (auto Actor : OverlappingActors)
-		{
-			AEnemy* Enemy = Cast<AEnemy>(Actor);
-			if (Enemy)
-			{
-				float DistanceToActor = (Enemy->GetActorLocation() - Location).Size();
-				if (DistanceToActor < MinDistance)
-				{
-					MinDistance = DistanceToActor;
-					ClosestEnemy = Enemy;
-					
-				}
-			}
-		}
-		if (MainPlayerController)
-		{
-			MainPlayerController->DisplayEnemyHealthBar();
-		}
-		SetCombatTarget(ClosestEnemy);
-		bHasCombatTarget = true;
-	}
+	SetHasCombatTarget(false);
+	SetCombatTarget(nullptr);
 }
+
+
+void AMain::UpdateCombatTarget(AActor* Target)
+{
+	AEnemy* Enemy = Cast<AEnemy>(Target);
+	if (Enemy)
+	{
+		SetHasCombatTarget(true);
+		SetCombatTarget(Enemy);
+	}
+
+	//TArray<AActor*> OverlappingActors;
+	//GetOverlappingActors(OverlappingActors, EnemyFilter);
+
+	//if (OverlappingActors.Num() == 0)
+	//{
+	//	if (MainPlayerController)
+	//	{
+	//		MainPlayerController->RemoveEnemyHealthBar();
+	//	}
+	//	return;
+	//}
+
+	//AEnemy* ClosestEnemy = Cast<AEnemy>(OverlappingActors[0]);
+	//if (ClosestEnemy)
+	//{
+	//	FVector Location = GetActorLocation();
+	//	float MinDistance = (ClosestEnemy->GetActorLocation() - Location).Size();
+
+	//	for (auto Actor : OverlappingActors)
+	//	{
+	//		AEnemy* Enemy = Cast<AEnemy>(Actor);
+	//		if (Enemy)
+	//		{
+	//			float DistanceToActor = (Enemy->GetActorLocation() - Location).Size();
+	//			if (DistanceToActor < MinDistance)
+	//			{
+	//				MinDistance = DistanceToActor;
+	//				ClosestEnemy = Enemy;
+	//				
+	//			}
+	//		}
+	//	}
+	//	if (MainPlayerController)
+	//	{
+	//		MainPlayerController->DisplayEnemyHealthBar();
+	//	}
+	//	SetCombatTarget(ClosestEnemy);
+	//	bHasCombatTarget = true;
+	//}
+}
+
 
 FRotator AMain::GetLookAtRotationYaw(FVector Target)
 {
@@ -707,7 +750,13 @@ void AMain::BeginPushing()
 		break;
 
 	case EEquipmentStatus::EES_Tool:
+		if (CurrentActiveTool)
+		{
+			CurrentActiveTool->SetActorHiddenInGame(true);
+
+		}
 		break;
+
 	case EEquipmentStatus::EES_MAX:
 		break;
 	default:
@@ -735,6 +784,11 @@ void AMain::StopPushing()
 		break;
 
 	case EEquipmentStatus::EES_Tool:
+		if (CurrentActiveTool)
+		{
+			
+			CurrentActiveTool->SetActorHiddenInGame(false);
+		}
 		break;
 	case EEquipmentStatus::EES_MAX:
 		break;
@@ -760,21 +814,21 @@ void AMain::UnlockDoor()
 
 void AMain::EquipToolSlotOne()
 {
-	if (EquipmentStatus != EEquipmentStatus::EES_Tool)
+	if (EquipmentStatus != EEquipmentStatus::EES_Tool && ToolToUse)
 	{
-		ToolInSlotOne->Equip(this);
-		SetCurrentActiveTool(ToolInSlotOne);
-		SetEquipmentStatus(EEquipmentStatus::EES_Tool);
+		//ATool* SpawnedTool = NewObject<ATool>(ToolToUse->StaticClass());
+		ATool* SpawnedTool = GetWorld()->SpawnActor<ATool>(ToolToUse->GetDefaultObject()->GetClass(), FActorSpawnParameters());
+		if (SpawnedTool)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Tool Spawned"));
 
-	}
-}
+			SpawnedTool->SetToolOwner(this);
+			SpawnedTool->SetInstigator(MainPlayerController);
 
-void AMain::EquipToolSlotTwo()
-{
-	if (EquipmentStatus != EEquipmentStatus::EES_Tool)
-	{
-		ToolInSlotTwo->Equip(this);
-		SetCurrentActiveTool(ToolInSlotTwo);
+			SpawnedTool->Equip(this);
+			SetCurrentActiveTool(SpawnedTool);
+
+		}
 		SetEquipmentStatus(EEquipmentStatus::EES_Tool);
 	}
 }
@@ -784,21 +838,19 @@ void AMain::SetCurrentActiveTool(ATool* Tool)
 	CurrentActiveTool = Tool;
 }
 
-void AMain::SetToolSlotOne(ATool* Tool)
+void AMain::SetToolSlotOne(UClass* Tool)
 {
-	ToolInSlotOne = Tool;
-}
+	//ToolInSlotOne = Tool;
 
-void AMain::SetToolSlotTwo(ATool* Tool)
-{
-	ToolInSlotTwo = Tool;
+	ToolToUse = Tool->GetClass();//to use
+
 }
 
 void AMain::PutAwayEquipment()
 {
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 
-	if (AnimInstance && WorldMontage)
+	if (AnimInstance)
 	{
 
 		switch (EquipmentStatus)
@@ -818,17 +870,109 @@ void AMain::PutAwayEquipment()
 			SetEquipmentStatus(EEquipmentStatus::EES_Unarmed);
 
 			break;
+
 		case EEquipmentStatus::EES_Tool:
+			if (!CurrentActiveTool)
+			{
+				SetEquipmentStatus(EEquipmentStatus::EES_Unarmed);
+				SetCurrentToolMontage(WorldMontage);
+			}
+			else {
+				CurrentActiveTool->Destroy();
+				CurrentActiveTool = nullptr;
+				SetEquipmentStatus(EEquipmentStatus::EES_Unarmed);
+				SetCurrentToolMontage(WorldMontage);
 
-			CurrentActiveTool->Destroy();
-
-			SetEquipmentStatus(EEquipmentStatus::EES_Unarmed);
-
+				}
 			break;
+
 		case EEquipmentStatus::EES_MAX:
 			break;
 		default:
 			break;
 		}
+	}
+}
+
+void AMain::PrimaryToolFunction()
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance)
+	{
+		AnimInstance->Montage_Play(CurrentToolMontage, 1.f);
+		AnimInstance->Montage_JumpToSection(FName("PrimaryBegin"), CurrentToolMontage);
+	}
+}
+
+void AMain::SecondaryToolFunction()
+{
+	if (CurrentActiveTool->ToolName == "Bow")
+	{
+		ToggleZoomCamera();
+	}
+	else 
+	{
+		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+		if (AnimInstance)
+		{
+			AnimInstance->Montage_Play(CurrentToolMontage, 1.f);
+			AnimInstance->Montage_JumpToSection(FName("SecondaryBegin"), CurrentToolMontage);
+		}
+	}
+
+}
+
+void AMain::SetCombatTarget(AEnemy* Target)
+{
+	CombatTarget = Target;
+}
+
+void AMain::SetHasCombatTarget(bool HasTarget)///GET RID OF??!?!
+{
+	UE_LOG(LogTemp, Warning, TEXT("Setcombattarget"));
+
+	bHasCombatTarget = HasTarget;
+}
+
+void AMain::TriggerToUpdateCombatTarget(AActor* Target)
+{
+	if (Target)
+	{
+		UpdateCombatTarget(Target);
+	}
+	else 
+	{
+		UpdateCombatTarget();
+	}
+}
+
+void AMain::SetCurrentToolMontage(UAnimMontage* MontageToSet)
+{
+	CurrentToolMontage = MontageToSet;
+}
+
+void AMain::ToggleZoomCamera()
+{
+	if (!bIsZoomed)
+	{
+		CameraBoom->TargetArmLength = 0.f;
+		CameraBoom->SocketOffset = FVector(25.f, 9.f, 75.f);
+		bUseControllerRotationYaw = true;
+		bUseControllerRotationPitch = true;
+
+		bIsZoomed = true;
+	}
+	else
+	{
+		CameraBoom->TargetArmLength = 250.f;
+		CameraBoom->SocketOffset = FVector(0.f, 65.f, 55.f);
+		bUseControllerRotationYaw = false;
+		bUseControllerRotationPitch = false;
+
+		float CurrentYaw = GetActorRotation().Yaw;
+		float CurrentRoll = GetActorRotation().Roll;
+		SetActorRotation(FRotator(0.f, CurrentYaw, CurrentRoll));
+
+		bIsZoomed = false;
 	}
 }
