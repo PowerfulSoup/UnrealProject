@@ -12,6 +12,8 @@
 #include "Enemy.h"
 #include "Engine/SkeletalMeshSocket.h"
 #include "UObject/UObjectGlobals.h"
+#include "Engine/World.h"
+
 
 
 
@@ -23,12 +25,17 @@ ATool::ATool()
 
 	SkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("SkeletalMesh"));
 	SetRootComponent(SkeletalMesh);
+	SkeletalMesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
 
 	CollisionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionSphere"));
+	CollisionSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldDynamic, ECollisionResponse::ECR_Ignore);
 	CollisionSphere->SetupAttachment(SkeletalMesh);
 
 	IdleParticleSystemComponent = CreateDefaultSubobject<UParticleSystemComponent>(TEXT("IdleParticleComponent"));
 	IdleParticleSystemComponent->SetupAttachment(GetRootComponent());
+
+	Damage = 0.f;
+
 }
 
 // Called when the game starts or when spawned
@@ -39,6 +46,7 @@ void ATool::BeginPlay()
 	CollisionSphere->OnComponentBeginOverlap.AddDynamic(this, &ATool::OnOverlapBegin);
 	CollisionSphere->OnComponentEndOverlap.AddDynamic(this, &ATool::OnOverlapEnd);
 	
+
 }
 
 // Called every frame
@@ -60,19 +68,15 @@ void ATool::SecondaryFunction()
 
 void ATool::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	AMain* Main = Cast<AMain>(OtherActor);
-	if (Main)
-	{
-		if (!Main->ToolInSlotOne)
-		{
-			Main->SetToolSlotOne(this);
-		}
-		else
-		{
-			Main->SetToolSlotTwo(this);
-		}
-	}
 
+		AMain* Main = Cast<AMain>(OtherActor);
+		if (Main)
+		{
+			//if (!Main->ToolInSlotOne)
+			//{
+				Main->SetToolSlotOne(this->GetClass());
+			//}
+		}
 
 }
 
@@ -85,24 +89,38 @@ void ATool::Equip(AMain* Char)
 {
 	if (Char)
 	{
-		SetInstigator(Char->GetController());
-
-		SkeletalMesh->SetSimulatePhysics(false);
-
-		const USkeletalMeshSocket* RightHandSocket = Char->GetMesh()->GetSocketByName("RightHandSocket");
-
-		ATool* NewTool = NewObject<ATool>(this, ATool::StaticClass());
-
-		if (RightHandSocket)
+		if (bIsEquippedInRightHand)
 		{
+			SetInstigator(Char->GetController());
+			SkeletalMesh->SetSimulatePhysics(false);
 
-			RightHandSocket->AttachActor(NewTool, Char->GetMesh());
-			//bRotate = false;
-			Char->SetCurrentActiveTool(this);
+			const USkeletalMeshSocket* RightHandSocket = Char->GetMesh()->GetSocketByName("RightHandSocket");
 
+			if (RightHandSocket)
+			{
+				RightHandSocket->AttachActor(this, Char->GetMesh());
+				Char->SetCurrentActiveTool(this);
+			}
+
+			Char->SetEquipmentStatus(EEquipmentStatus::EES_Tool);
+			SetToolOwner(Char);
 		}
-		Char->SetEquipmentStatus(EEquipmentStatus::EES_Tool);
-		ToolOwner = Char;
+		else 
+		{
+			SetInstigator(Char->GetController());
+			SkeletalMesh->SetSimulatePhysics(false);
+
+			const USkeletalMeshSocket* LeftHandSocket = Char->GetMesh()->GetSocketByName("LeftHandSocket");
+
+			if (LeftHandSocket)
+			{
+				LeftHandSocket->AttachActor(this, Char->GetMesh());
+				Char->SetCurrentActiveTool(this);
+			}
+
+			Char->SetEquipmentStatus(EEquipmentStatus::EES_Tool);
+			SetToolOwner(Char);
+		}
 
 	}
 }
@@ -115,4 +133,9 @@ void ATool::Sheathe()
 void ATool::UnSheathe()
 {
 
+}
+
+void ATool::SetToolOwner(AMain* Char)
+{
+	ToolOwner = Char;
 }
