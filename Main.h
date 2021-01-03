@@ -35,7 +35,6 @@ enum class EEquipmentStatus : uint8
 	EES_Tool UMETA(DisplayName = "Tool"),
 
 	EES_MAX UMETA(DisplayName = "Default MAX")
-
 };
 
 UCLASS()
@@ -94,6 +93,18 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player Stats")
 	int32 Coins;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player Stats")
+		int32 ArrowAmmo;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player Stats")
+		int32 ArrowAmmoMax;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player Stats")
+		int32 BombCount;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player Stats")
+		int32 BombCountMax;
+
 	//Movement Variables
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Movement")
 	float StaminaDrainRate;
@@ -124,11 +135,14 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Puzzles")
 		class ALockedDoor* LockedDoorInRange;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Items")
+		class AItemChest* ItemChestInRange;
+
 	//Combat Varibles
 	UPROPERTY(BlueprintReadOnly)
 	bool bAttacking;
 
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly)
 	bool bBlocking;
 
 	bool bShouldLoopBlock;
@@ -178,8 +192,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tools")//use instead of toolinslotone?
 		TSubclassOf<ATool> ToolToUse;
 	
-
-
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -253,6 +265,7 @@ public:
 	void JumpAttackMoveForward(float Value);
 
 	void Block();
+
 	UFUNCTION(BlueprintCallable)
 	void BlockEnd();
 
@@ -289,6 +302,12 @@ public:
 	void SetEquippedShield(AShield* ShieldToSet);
 	FORCEINLINE AShield* GetEquippedShield() { return EquippedShield; }
 
+	UFUNCTION(BlueprintCallable)
+		void UpdateBowAmmo(int32 Amount);
+
+	UFUNCTION(BlueprintCallable)
+		void UpdateBombAmmo(int32 Amount);
+
 	//TOOL Functions
 
 	UFUNCTION(BlueprintCallable)
@@ -296,20 +315,23 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void EquipToolSlotOne();
 	void PutAwayEquipment();
+	UFUNCTION(BlueprintCallable)
 	void SetToolSlotOne(UClass* Tool);
 	UFUNCTION(BlueprintCallable)
 	void PrimaryToolFunction();
 	UFUNCTION(BlueprintCallable)
 	void SecondaryToolFunction();
+	UFUNCTION(BlueprintCallable)
+	void SpawnTool();
 
+	bool ArrowAmmoCheck();
+	bool BombCountCheck();
 
 	//Other inline Methods
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 	FORCEINLINE void SetStaminaStatus(EStaminaStatus Status) { StaminaStatus = Status; }
 	FORCEINLINE void SetActiveOverlappingItem(AItem* Item) { ActiveOverlappingItem = Item; }
-
-
 
 	//COMBAT ENEMY FUNCTIONS
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
@@ -331,6 +353,9 @@ public:
 
 	UFUNCTION()
 		void UnlockDoor();
+
+	UFUNCTION()
+		void OpenItemChest(); //makereturn item instead?
 
 	UFUNCTION()
 		void ToggleZoomCamera();
