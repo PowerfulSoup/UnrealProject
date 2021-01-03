@@ -23,8 +23,8 @@
 #include "LockedDoor.h"
 #include "Components/SphereComponent.h"
 #include "Tool.h"
-
-
+#include "ItemChest.h"
+#include "Bow.h"
 
 // Sets default values
 AMain::AMain()
@@ -97,7 +97,10 @@ AMain::AMain()
 	KeyCount = 0;
 
 	//tools
-
+	BombCount = 5;
+	BombCountMax = 25;
+	ArrowAmmo = 12;
+	ArrowAmmoMax = 50;
 	
 }
 
@@ -293,8 +296,6 @@ void AMain::MoveForward(float Value)
 
 void AMain::MoveRight(float Value)
 {
-	//Find out which way is right
-
 	bMovingRight = false;
 	if ((Controller != nullptr) && (Value != 0.0f) && (!bIsZoomed) && (!bAttacking) && (!bBlocking) && (MovementStatus != EMovementStatus::EMS_Dead) && (MovementStatus != EMovementStatus::EMS_Dead))
 	{
@@ -331,18 +332,21 @@ void AMain::ShiftKeyUp()
 void AMain::LMBDown()
 {
 	bLMBDown = true;
-	if (MovementStatus == EMovementStatus::EMS_Dead) return;
+	if (MovementStatus == EMovementStatus::EMS_Dead ) return;
 
 	switch (EquipmentStatus)
 	{
 	case EEquipmentStatus::EES_Unarmed:
-
+		if (EquippedWeapon == nullptr)
+		{
+			break;
+		}
+		PutAwayEquipment();
 		break;
 
 	case EEquipmentStatus::EES_SwordAndShield:
 		if (EquippedWeapon && !bBlocking)
 		{
-
 			Attack();
 		}
 		break;
@@ -350,7 +354,10 @@ void AMain::LMBDown()
 	case EEquipmentStatus::EES_Tool:
 		if (CurrentActiveTool)
 		{
-			PrimaryToolFunction();
+			if (CurrentActiveTool->ToolName == "GrapplingHook" || ArrowAmmoCheck() && CurrentActiveTool->ToolName == "Bow" || BombCountCheck() && CurrentActiveTool->ToolName == "Bombs")
+			{
+				PrimaryToolFunction();
+			}
 		}
 		break;
 
@@ -418,24 +425,21 @@ void AMain::AttackEnd()
 
 void AMain::BlockEnd()
 {
-	if (bRMBDown) {
+	if (bRMBDown) 
+	{
 		bShouldLoopBlock = true;
 		Block();
 	}
 
 	else {
-
-		//Play the animation to go from blocking stance to normal
 		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 		SetInterpToEnemy(false);
 
-		if (AnimInstance && CombatMontage) {
-
+		if (AnimInstance && CombatMontage) 
+		{
 			AnimInstance->Montage_Play(CombatMontage, 1.0f);
 			AnimInstance->Montage_JumpToSection(FName("Block_End"), CombatMontage);
-
 		}
-
 		bBlocking = false;
 		bShouldLoopBlock = false;
 	}
@@ -470,13 +474,12 @@ void AMain::Attack()
 
 			if (AnimInstance)
 			{
-
 				if (bShiftKeyDown)
 				{
 					AnimInstance->Montage_Play(SwordMontage, 1.f);
 					AnimInstance->Montage_JumpToSection(FName("OverheadAttack"), SwordMontage);
-					JumpAttack();
 
+					JumpAttack();
 				}
 				else
 				{
@@ -489,36 +492,30 @@ void AMain::Attack()
 
 void AMain::JumpAttackMoveForward(float Value)
 {
+
 	const FRotator Rotation = Controller->GetControlRotation();
 	const FRotator YawRotation(0.f, Rotation.Yaw, 0.f);
 	const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-
+	
 	AddMovementInput(Direction, Value);
 }
 
 void AMain::Block()
 {
 	{
-		//if Player was not already blocking or attacking
 		if (EquipmentStatus != EEquipmentStatus::EES_Unarmed && !bBlocking && !bAttacking && MovementStatus != EMovementStatus::EMS_Dead) {
 
 			bBlocking = true;
-			//SetInterpToEnemy(true);
-
-			//Play the "Going To Block" Animation
 			UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 
-			if (AnimInstance && CombatMontage && bShouldLoopBlock) 
+			if (AnimInstance && CombatMontage ) //&& bShouldLoopBlock
 			{
-
 				AnimInstance->Montage_Play(CombatMontage, 1.0f);
 				AnimInstance->Montage_JumpToSection(FName("Block_Begin"), CombatMontage);
-
 			}
 		}
 		//If already blocking,
 		else {
-
 			//Play the "Blocking Idle" animation
 			UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 
@@ -547,7 +544,6 @@ void AMain::Jump()
 	if (MovementStatus != EMovementStatus::EMS_Dead)
 	{
 		Super::Jump();
-
 	}
 }
 
@@ -607,16 +603,22 @@ void AMain::SetInterpToEnemy(bool Interp)
 
 float AMain::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser)
 {
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+
 	if (bBlocking)
 	{
 		DamageAmount *= (1.f - EquippedShield->DamageReduction);
-
+		EquippedShield->SpawnBlockEmitter();
+		if (AnimInstance)
+		{
+			AnimInstance->Montage_Play(CombatMontage, 1.7f);
+			AnimInstance->Montage_JumpToSection(FName("Block_Impact"), CombatMontage);
+		}
 	}
 		if (Health - DamageAmount <= 0.f)
 		{
 			Health = 0.f;
 			Die();
-
 			if (DamageCauser)
 			{
 				AEnemy* Enemy = Cast<AEnemy>(DamageCauser);
@@ -636,7 +638,6 @@ float AMain::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEve
 void AMain::UpdateCombatTarget()
 {
 	UE_LOG(LogTemp, Warning, TEXT("overloaded combat target"));
-
 	SetHasCombatTarget(false);
 	SetCombatTarget(nullptr);
 }
@@ -724,12 +725,15 @@ void AMain::EButtonDown()
 	{
 		UnlockDoor();
 	}
+	else if (ItemChestInRange)
+	{
+		OpenItemChest();
+	}
 }
 
 void AMain::EButtonUp()
 {
 	bEButtonDown = false;
-
 }
 
 void AMain::BeginPushing()
@@ -753,7 +757,6 @@ void AMain::BeginPushing()
 		if (CurrentActiveTool)
 		{
 			CurrentActiveTool->SetActorHiddenInGame(true);
-
 		}
 		break;
 
@@ -814,22 +817,49 @@ void AMain::UnlockDoor()
 
 void AMain::EquipToolSlotOne()
 {
-	if (EquipmentStatus != EEquipmentStatus::EES_Tool && ToolToUse)
+	if (ToolToUse) //cOMMENTED THIS PART OUT BC OF STUIPID BP GENERATED CLASS THING
 	{
-		//ATool* SpawnedTool = NewObject<ATool>(ToolToUse->StaticClass());
-		ATool* SpawnedTool = GetWorld()->SpawnActor<ATool>(ToolToUse->GetDefaultObject()->GetClass(), FActorSpawnParameters());
-		if (SpawnedTool)
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+
+	if (EquipmentStatus != EEquipmentStatus::EES_Tool)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Tool Spawned"));
+			switch (EquipmentStatus)
+			{
+			case EEquipmentStatus::EES_Unarmed:
+					AnimInstance->Montage_Play(WorldMontage, 1.f);
+					AnimInstance->Montage_JumpToSection(FName("Equip_OffHand"), WorldMontage);
 
-			SpawnedTool->SetToolOwner(this);
-			SpawnedTool->SetInstigator(MainPlayerController);
+				break;
 
-			SpawnedTool->Equip(this);
-			SetCurrentActiveTool(SpawnedTool);
+			case EEquipmentStatus::EES_SwordAndShield:
+				PutAwayEquipment();
 
+				break;
+
+			case EEquipmentStatus::EES_Tool:
+				AnimInstance->Montage_Play(WorldMontage, 1.f);
+				AnimInstance->Montage_JumpToSection(FName("UnEquip_OffHand"), WorldMontage);
+				CurrentActiveTool->Destroy();
+				CurrentActiveTool = nullptr;
+				SetEquipmentStatus(EEquipmentStatus::EES_Unarmed);
+				SetCurrentToolMontage(WorldMontage);
+
+				break;
+			case EEquipmentStatus::EES_MAX:
+				break;
+			default:
+				break;
+			}
 		}
-		SetEquipmentStatus(EEquipmentStatus::EES_Tool);
+		else
+		{
+			AnimInstance->Montage_Play(WorldMontage, 1.f);
+			AnimInstance->Montage_JumpToSection(FName("UnEquip_OffHand"), WorldMontage);
+			CurrentActiveTool->Destroy();
+			CurrentActiveTool = nullptr;
+			SetEquipmentStatus(EEquipmentStatus::EES_Unarmed);
+			SetCurrentToolMontage(WorldMontage);
+		}
 	}
 }
 
@@ -840,10 +870,7 @@ void AMain::SetCurrentActiveTool(ATool* Tool)
 
 void AMain::SetToolSlotOne(UClass* Tool)
 {
-	//ToolInSlotOne = Tool;
-
 	ToolToUse = Tool->GetClass();//to use
-
 }
 
 void AMain::PutAwayEquipment()
@@ -852,10 +879,11 @@ void AMain::PutAwayEquipment()
 
 	if (AnimInstance)
 	{
-
 		switch (EquipmentStatus)
 		{
 		case EEquipmentStatus::EES_Unarmed:
+			DisableInput(MainPlayerController);
+
 			AnimInstance->Montage_Play(WorldMontage, 1.8f);
 			AnimInstance->Montage_JumpToSection(FName("Equip"), WorldMontage);
 
@@ -864,6 +892,8 @@ void AMain::PutAwayEquipment()
 
 			break;
 		case EEquipmentStatus::EES_SwordAndShield:
+			DisableInput(MainPlayerController);
+
 			AnimInstance->Montage_Play(WorldMontage, 1.8f);
 			AnimInstance->Montage_JumpToSection(FName("UnEquip"), WorldMontage);
 
@@ -872,18 +902,6 @@ void AMain::PutAwayEquipment()
 			break;
 
 		case EEquipmentStatus::EES_Tool:
-			if (!CurrentActiveTool)
-			{
-				SetEquipmentStatus(EEquipmentStatus::EES_Unarmed);
-				SetCurrentToolMontage(WorldMontage);
-			}
-			else {
-				CurrentActiveTool->Destroy();
-				CurrentActiveTool = nullptr;
-				SetEquipmentStatus(EEquipmentStatus::EES_Unarmed);
-				SetCurrentToolMontage(WorldMontage);
-
-				}
 			break;
 
 		case EEquipmentStatus::EES_MAX:
@@ -891,6 +909,11 @@ void AMain::PutAwayEquipment()
 		default:
 			break;
 		}
+	}
+
+	if (bIsZoomed)
+	{
+		ToggleZoomCamera();
 	}
 }
 
@@ -906,7 +929,7 @@ void AMain::PrimaryToolFunction()
 
 void AMain::SecondaryToolFunction()
 {
-	if (CurrentActiveTool->ToolName == "Bow")
+	if (CurrentActiveTool->ToolName == "Bow" || CurrentActiveTool->ToolName == "GrapplingHook")
 	{
 		ToggleZoomCamera();
 	}
@@ -956,7 +979,7 @@ void AMain::ToggleZoomCamera()
 	if (!bIsZoomed)
 	{
 		CameraBoom->TargetArmLength = 0.f;
-		CameraBoom->SocketOffset = FVector(25.f, 9.f, 75.f);
+		CameraBoom->SocketOffset = FVector(25.f, 15.f, 75.f);
 		bUseControllerRotationYaw = true;
 		bUseControllerRotationPitch = true;
 
@@ -974,5 +997,71 @@ void AMain::ToggleZoomCamera()
 		SetActorRotation(FRotator(0.f, CurrentYaw, CurrentRoll));
 
 		bIsZoomed = false;
+	}
+}
+
+void AMain::OpenItemChest()
+{
+	ItemChestInRange->OpenItemChest(this);
+}
+
+void AMain::SpawnTool()
+{
+	ATool* SpawnedTool;
+	SpawnedTool = GetWorld()->SpawnActor<ATool>(ToolToUse->GetDefaultObject()->GetClass(), FActorSpawnParameters());
+
+	SpawnedTool->SetToolOwner(this);
+	SpawnedTool->SetInstigator(MainPlayerController);
+
+	SpawnedTool->Equip(this);
+	SetCurrentActiveTool(SpawnedTool);
+	SetCurrentToolMontage(CurrentActiveTool->ToolMontage);
+}
+
+void AMain::UpdateBowAmmo(int32 Amount)
+{
+	if (Amount + ArrowAmmo >= ArrowAmmoMax)
+	{
+		ArrowAmmo = ArrowAmmoMax;
+	}
+	else
+	{
+		ArrowAmmo += Amount;
+	}
+}
+
+void AMain::UpdateBombAmmo(int32 Amount)
+{
+	if (Amount + BombCount >= BombCountMax)
+	{
+		BombCount = BombCountMax;
+	}
+	else
+	{
+		BombCount += Amount;
+	}
+}
+
+bool AMain::ArrowAmmoCheck()
+{
+	if (ArrowAmmo - 1 < 0)
+	{
+		return false;
+	}
+	else
+	{
+		return true;
+	}
+}
+
+bool AMain::BombCountCheck()
+{
+	if (BombCount - 1 < 0)
+	{
+		return false;
+	}
+	else
+	{
+		return true;
 	}
 }
