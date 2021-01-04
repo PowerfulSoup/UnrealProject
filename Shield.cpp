@@ -104,30 +104,34 @@ void AShield::Equip(AMain* Char)
 
 void AShield::CombatOnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (OtherActor)
-	{
-		AEnemy* Enemy = Cast<AEnemy>(OtherActor);
-		if (Enemy)
-		{
-			if (Enemy->HitParticles)
-			{
-				const USkeletalMeshSocket* ShieldSocket = SkeletalMesh->GetSocketByName("ShieldSocket");
-				if (ShieldSocket)
-				{
-					FVector SocketLocation = ShieldSocket->GetSocketLocation(SkeletalMesh);
-					UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), Enemy->HitParticles, SocketLocation, FRotator(0.f), false);
-				}
-			}
-			if (Enemy->HitSound)
-			{
-				UGameplayStatics::PlaySound2D(this, Enemy->HitSound);
-			}
-			if (DamageTypeClass)
-			{
-				UGameplayStatics::ApplyDamage(Enemy, DamageReduction, WeaponInstigator, this, DamageTypeClass);
-			}
-		}
-	}
+	//Shield bash?
+
+	//if (OtherActor)
+	//{
+	//	AEnemy* Enemy = Cast<AEnemy>(OtherActor);
+	//	if (Enemy)
+	//	{
+
+			//if (Enemy->HitParticles)
+			//{
+			//	const USkeletalMeshSocket* ShieldSocket = SkeletalMesh->GetSocketByName("ShieldSocket");
+			//	if (ShieldSocket)
+			//	{
+			//		FVector SocketLocation = ShieldSocket->GetSocketLocation(SkeletalMesh);
+			//		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), Enemy->HitParticles, SocketLocation, FRotator(0.f), false);
+			//	}
+			//}
+			//if (Enemy->HitSound)
+			//{
+			//	UGameplayStatics::PlaySound2D(this, Enemy->HitSound);
+			//}
+			//if (DamageTypeClass)
+			//{
+			//	UGameplayStatics::ApplyDamage(Enemy, DamageReduction, WeaponInstigator, this, DamageTypeClass);
+			//}
+
+	//	}
+	//}
 }
 
 void AShield::CombatOnOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
@@ -160,4 +164,14 @@ void AShield::UnSheathe()
 	const USkeletalMeshSocket* LeftHandSocket = ShieldOwner->GetMesh()->GetSocketByName("ShieldEquipSocket");
 
 	LeftHandSocket->AttachActor(this, ShieldOwner->GetMesh());
+}
+
+void AShield::SpawnBlockEmitter()
+{
+	const USkeletalMeshSocket* ShieldSocket = SkeletalMesh->GetSocketByName("ShieldSocket");
+	if (ShieldSocket)
+	{
+		FVector SocketLocation = ShieldSocket->GetSocketLocation(SkeletalMesh);
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BlockParticles, SocketLocation, FRotator(0.f), false);
+	}
 }
