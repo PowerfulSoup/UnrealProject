@@ -13,6 +13,7 @@ enum class EEnemyMovementStatus : uint8
 	EMS_Idle UMETA(Display = "Idle"),
 	EMS_MoveToTarget UMETA(Display = "MoveToTarget"),
 	EMS_Attacking UMETA(Display = "Attacking"),
+	EMS_Shooting UMETA(Display = "Shooting"),
 	EMS_Dead UMETA(Display = "Dead"),
 
 	EMS_MAX UMETA(Display = "DefaultMAX")
@@ -96,6 +97,8 @@ public:
 	bool bHasValidTarget;
 
 
+
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -107,8 +110,8 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	FORCEINLINE void SetEnemyMovementStatus(EEnemyMovementStatus Status) { EnemyMovementStatus = Status; }
-	FORCEINLINE EEnemyMovementStatus GetEnemyMovementStatus() { return EnemyMovementStatus ; }
+	FORCEINLINE virtual void SetEnemyMovementStatus(EEnemyMovementStatus Status) { EnemyMovementStatus = Status; }
+	FORCEINLINE virtual EEnemyMovementStatus GetEnemyMovementStatus() { return EnemyMovementStatus ; }
 
 	UFUNCTION()
 	virtual void AggroSphereOnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
@@ -122,50 +125,50 @@ public:
 	virtual void CombatSphereOnOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
 	UFUNCTION(BlueprintCallable)
-		void MoveToTarget(class AMain* Target);
+	virtual void MoveToTarget(class AMain* Target);
 
 	UFUNCTION()
-		void WeaponHitBoxOnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	virtual void WeaponHitBoxOnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 	UFUNCTION()
-		void WeaponHitBoxOnOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+	virtual void WeaponHitBoxOnOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
 	UFUNCTION(BlueprintCallable)
-		void ActivateCollision();
+	virtual void ActivateCollision();
 
 	UFUNCTION(BlueprintCallable)
-		void DeactivateCollision();
+	virtual void DeactivateCollision();
 
 	///COMBAT FUNCTIONS
 	UFUNCTION(BlueprintCallable)
-		void Attack();
+	virtual void Attack();
 
 	UFUNCTION(BlueprintCallable)
-		void AttackEnd();
+	virtual void AttackEnd();
 
-	void Strafe();
+	virtual void Strafe();
 
-	int32 DecideNextCombatAction();
+	virtual int32 DecideNextCombatAction();
 
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
 
-	void Die(AActor* Causer);
+	virtual void Die(AActor* Causer);
 
 	UFUNCTION(BlueprintCallable)
-		void DeathEnd();
+	virtual void DeathEnd();
 
 	UFUNCTION(BlueprintCallable)
-		bool Alive();
+	virtual bool Alive();
 
-	void Disappear();
+	virtual void Disappear();
 
-	FRotator GetLookAtRotationYaw(FVector Target);
+	virtual FRotator GetLookAtRotationYaw(FVector Target);
 
 
 	//WORLD FUNCTIONS
 	UFUNCTION(BlueprintImplementableEvent, Category = "Combat")
-		void DropLoot();
+	void DropLoot();
 	
 	UFUNCTION()
-		void FeedDoor();
+	virtual void FeedDoor();
 };
