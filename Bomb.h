@@ -16,7 +16,7 @@ class RPG_API ABomb : public ATool
 public:
 	ABomb();
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bomb")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tool | Bomb")
 		class USphereComponent* ExplosionRadius;
 
 	FTimerHandle FuseTimer;
