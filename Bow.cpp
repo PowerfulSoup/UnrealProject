@@ -35,15 +35,18 @@ void ABow::BeginPlay()
 
 void ABow::PrimaryFunction()//Draw/Fire
 {
-	if (bDrawn && ToolOwner->bLMBDown == false)
-	{
-		Fire();
+	if (ToolOwner->ArrowAmmoCheck())
+	{	
+		if (bDrawn && ToolOwner->bLMBDown == false)
+		{
+			Fire();
+			ToolOwner->ArrowAmmo--;
+		}
 	}
 }
 
 void ABow::SecondaryFunction()//Zoom
 {
-
 	ToolOwner->ToggleZoomCamera();
 }
 
