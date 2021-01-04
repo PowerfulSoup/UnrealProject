@@ -74,7 +74,7 @@ void ATool::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* Oth
 		{
 			//if (!Main->ToolInSlotOne)
 			//{
-				Main->SetToolSlotOne(this->GetClass());
+				//Main->SetToolSlotOne(this->GetClass());
 			//}
 		}
 
