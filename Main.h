@@ -323,6 +323,11 @@ public:
 	void SecondaryToolFunction();
 	UFUNCTION(BlueprintCallable)
 	void SpawnTool();
+	UFUNCTION()
+	void ToggleZoomCamera();
+	UFUNCTION()
+	void RecallGrapplingHook();
+
 
 	bool ArrowAmmoCheck();
 	bool BombCountCheck();
@@ -355,9 +360,7 @@ public:
 		void UnlockDoor();
 
 	UFUNCTION()
-		void OpenItemChest(); //makereturn item instead?
+		void OpenItemChest(); //make to return item instead?
 
-	UFUNCTION()
-		void ToggleZoomCamera();
 
 };
