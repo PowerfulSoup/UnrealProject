@@ -1,40 +1,54 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#pragma once
 
-#include "CoreMinimal.h"
-#include "HitSwitch.h"
-#include "HitSwitchSpawnActor.generated.h"
+#include "HitSwitchSpawnActor.h"
+#include "Kismet/GameplayStatics.h"
+#include "Engine/World.h"
 
-/**
- * 
- */
-UCLASS()
-class RPG_API AHitSwitchSpawnActor : public AHitSwitch
+
+AHitSwitchSpawnActor::AHitSwitchSpawnActor()
 {
-	GENERATED_BODY()
+	SwitchTimerDuration = 1.f;
+	bReady = true;
+}
 
-public:
-	AHitSwitchSpawnActor();
+void AHitSwitchSpawnActor::BeginPlay()
+{
+	Super::BeginPlay();
+	ActorToShow->SetActorHiddenInGame(true);
+	ActorToShow->SetActorEnableCollision(false);
+}
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hit Switch")
-		AActor* ActorToShow;
+void AHitSwitchSpawnActor::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+}
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hit Switch")
-		class UParticleSystem* ActorSpawnParticle;
+void AHitSwitchSpawnActor::SwitchFunction()
+{
+	Super::SwitchFunction();
 
-protected:
-	virtual void BeginPlay() override;
+	if (ActorToShow && bReady)
+	{
+		ToggleMeshMaterial();
+		ActorToShow->SetActorHiddenInGame(false);
+		ActorToShow->SetActorEnableCollision(true);
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ActorSpawnParticle, ActorToShow->GetActorLocation(), FRotator(0.f), true);
+		bReady = false;
+	}
+}
 
-public:
-	virtual void Tick(float DeltaTime) override;
+void AHitSwitchSpawnActor::ToggleMeshMaterial()
+{
+	Super::ToggleMeshMaterial();
+}
 
-	virtual void SwitchFunction() override;
+void AHitSwitchSpawnActor::ToggleReadyStatus()
+{
+	Super::ToggleReadyStatus();
+}
 
-	virtual void ToggleMeshMaterial() override;
-
-	virtual void ToggleReadyStatus() override;
-
-	virtual void ReadyTimer() override;
-
-};
+void AHitSwitchSpawnActor::ReadyTimer()
+{
+	Super::ReadyTimer();
+}
