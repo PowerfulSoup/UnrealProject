@@ -41,6 +41,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Item | Skeletal Mesh")
 		class USkeletalMeshComponent* SkeletalMesh;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Particles")
+		class UParticleSystem* BlockParticles;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item | Combat")
 		class UBoxComponent* CombatCollision;
 
@@ -90,4 +93,6 @@ public:
 	UFUNCTION(BlueprintCallable)
 		void UnSheathe();
 	
+	UFUNCTION()
+		void SpawnBlockEmitter();
 };
