@@ -144,13 +144,14 @@ void AEnemy::CombatSphereOnOverlapBegin(UPrimitiveComponent* OverlappedComponent
 			if (Main)
 			{
 				bHasValidTarget = true;
-
+				AIController->StopMovement();
 				//Main->SetCombatTarget(this);
 				//Main->SetHasCombatTarget(true); ////COMMENTED OUT FOR TS
 				//Main->UpdateCombatTarget();
 
 				CombatTarget = Main;
 				bOverlappingCombatSphere = true;
+				//SetEnemyMovementStatus(EEnemyMovementStatus::EMS_Attacking); // I swapped this out from being switched within the Attack function every time its called
 
 				float AttackTime = FMath::FRandRange(AttackMinTime, AttackMaxTime);
 				GetWorldTimerManager().SetTimer(AttackTimer, this, &AEnemy::Attack, AttackTime);
@@ -171,6 +172,7 @@ void AEnemy::CombatSphereOnOverlapEnd(UPrimitiveComponent* OverlappedComponent, 
 			MoveToTarget(Main);
 			CombatTarget = nullptr;
 			bHasValidTarget = false;
+
 
 			//if (Main->CombatTarget == this)
 			//{
@@ -259,61 +261,63 @@ void AEnemy::DeactivateCollision()
 
 void AEnemy::Attack()
 {
-	if (Alive() && bHasValidTarget)
-	{
-		if (AIController)
-		{
-			AIController->StopMovement();
-			SetEnemyMovementStatus(EEnemyMovementStatus::EMS_Attacking);
-		}
-		if (!bAttacking)
-		{
-			bAttacking = true;
-			UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-			if (AnimInstance)
-			{
-				AnimInstance->Montage_Play(CombatMontage, 1.f);
-				AnimInstance->Montage_JumpToSection(FName("Attack"), CombatMontage);
-			}
+	//if (Alive() && bHasValidTarget)
+	//{
+	//	if (AIController)
+	//	{
+	//		AIController->StopMovement();
+	//		SetEnemyMovementStatus(EEnemyMovementStatus::EMS_Attacking);
+	//	}
+	//	if (!bAttacking)
+	//	{
+	//		bAttacking = true;
+	//		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	//		if (AnimInstance)
+	//		{
+	//			AnimInstance->Montage_Play(CombatMontage, 1.f);
+	//			AnimInstance->Montage_JumpToSection(FName("Attack"), CombatMontage);
+	//		}
 
-		}
-	}
+	//	}
+	//}
+
+	
 }
 
 void AEnemy::AttackEnd()
 {
-	bAttacking = false;
-	if (bOverlappingCombatSphere)
-	{
-		float AttackTime = FMath::FRandRange(AttackMinTime, AttackMaxTime);
+	//bAttacking = false;
+	//if (bOverlappingCombatSphere)
+	//{
+	//	float AttackTime = FMath::FRandRange(AttackMinTime, AttackMaxTime);
 
-		switch (DecideNextCombatAction())
-		{
-		case 1://Attack Again
-			GetWorldTimerManager().SetTimer(AttackTimer, this, &AEnemy::Attack, AttackTime);
-			break;
+	//	switch (DecideNextCombatAction())
+	//	{
+	//	case 1://Attack Again
+	//		GetWorldTimerManager().SetTimer(AttackTimer, this, &AEnemy::Attack, AttackTime);
+	//		break;
 
-		case 2://Attack Again
-			GetWorldTimerManager().SetTimer(AttackTimer, this, &AEnemy::Attack, AttackTime);
-			break;
-			
-		case 3: //Attack Again
-			GetWorldTimerManager().SetTimer(AttackTimer, this, &AEnemy::Attack, AttackTime);
-			break;
+	//	case 2://Attack Again
+	//		GetWorldTimerManager().SetTimer(AttackTimer, this, &AEnemy::Attack, AttackTime);
+	//		break;
+	//		
+	//	case 3: //Attack Again
+	//		GetWorldTimerManager().SetTimer(AttackTimer, this, &AEnemy::Attack, AttackTime);
+	//		break;
 
-		case 4: //Strafe
-			Strafe();
-			break;
+	//	//case 4: //Strafe
+	//	//	Strafe();
+	//	//	break;
 
-		case 5: //Strafe
-			Strafe();
-			break;
+	//	//case 5: //Strafe
+	//	//	Strafe();
+	//	//	break;
 
-		default:
-			break;
-		}
+	//	default:
+	//		break;
+	//	}
 
-	}
+	//}
 }
 
 float AEnemy::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser)
@@ -326,6 +330,7 @@ float AEnemy::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEv
 	else
 	{
 		Health -= DamageAmount;
+
 	}
 
 	return DamageAmount;
@@ -398,12 +403,12 @@ FRotator AEnemy::GetLookAtRotationYaw(FVector Target)
 
 int32 AEnemy::DecideNextCombatAction()
 {
-	int32 NextAction = FMath::RandRange(1, 5);
+	int32 NextAction = FMath::RandRange(1, 3);
 	return NextAction;
 }
 
 void AEnemy::Strafe()
 {
-
+	
 	DecideNextCombatAction();
 }
