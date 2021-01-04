@@ -1000,6 +1000,7 @@ void AMain::ToggleZoomCamera()
 	}
 }
 
+
 void AMain::OpenItemChest()
 {
 	ItemChestInRange->OpenItemChest(this);
@@ -1063,5 +1064,16 @@ bool AMain::BombCountCheck()
 	else
 	{
 		return true;
+	}
+}
+
+
+void AMain::RecallGrapplingHook()
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance)
+	{
+		AnimInstance->Montage_Play(CurrentToolMontage, 1.f);
+		AnimInstance->Montage_JumpToSection(FName("Pull"), CurrentToolMontage);
 	}
 }
