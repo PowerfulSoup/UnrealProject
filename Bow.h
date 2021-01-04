@@ -17,20 +17,22 @@ class RPG_API ABow : public ATool
 public:
 	ABow();
 
-	UPROPERTY(VisibleAnywhere,BlueprintReadWrite,Category = "Bow")
+	UPROPERTY(VisibleAnywhere,BlueprintReadWrite,Category = "Tool | Bow")
 	bool bDrawn;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Bow")
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Tool | Bow")
 		UStaticMeshComponent* ArrowPlaceHolder;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bow")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tool | Bow")
 		TSubclassOf<class AArrow> ArrowToSpawn;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bow")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tool | Bow")
 		FVector InitialArrowLocation;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Bow")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tool | Bow")
 		FVector TrueInitialArrowPHLocation;
+
+
 
 protected:
 
