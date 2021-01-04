@@ -40,6 +40,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tool")
 		FName ToolName;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tool")
+		UAnimMontage* ToolMontage;
+
 	bool bIsEquippedInRightHand;
 
 	//Combat Variables
