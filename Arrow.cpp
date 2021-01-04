@@ -15,7 +15,7 @@ AArrow::AArrow()
 	ArrowMovement = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ArrowMovement"));
 
 	ArrowMovement->ProjectileGravityScale = 0.02f;
-	ArrowMovement->Velocity = FVector(1800.f,0.f, 0.f);
+	ArrowMovement->Velocity = FVector(2700.f,0.f, 0.f);
 
 	Damage = 10.f;
 
