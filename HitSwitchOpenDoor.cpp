@@ -2,7 +2,8 @@
 
 
 #include "HitSwitchOpenDoor.h"
-#include "Door.h"
+#include "DungeonDoorway.h"
+//#include "Door.h"
 
 
 AHitSwitchOpenDoor::AHitSwitchOpenDoor()
@@ -27,21 +28,21 @@ void AHitSwitchOpenDoor::SwitchFunction()
 	{
 		ToggleMeshMaterial();
 
-		for (ADoor* Doors : DoorsToOpen)
+		for (ADungeonDoorway* DungeonDoorways : DungeonDoorwaysToOpen)
 		{
-			if (!Doors->bLowered && !Doors->bMoving)
+			if (!DungeonDoorways->bLowered && !DungeonDoorways->bMoving)
 			{
 				bReady = false;
 				ReadyTimer();
-				Doors->LowerDoor();
+				DungeonDoorways->LowerDoor();
 				bSwitchedOn = true;
 				bRotate = false;
 			}
-			else if(Doors->bLowered && !Doors->bMoving)
+			else if (DungeonDoorways->bLowered && !DungeonDoorways->bMoving)
 			{
 				bReady = false;
 				ReadyTimer();
-				Doors->RaiseDoor();
+				DungeonDoorways->RaiseDoor();
 				bSwitchedOn = false;
 				bRotate = true;
 			}
@@ -50,11 +51,11 @@ void AHitSwitchOpenDoor::SwitchFunction()
 	else if (!bSwitchedOn && !bCanToggle && bReady)
 	{
 		ToggleMeshMaterial();
-		for (ADoor* Doors : DoorsToOpen)
+		for (ADungeonDoorway* DungeonDoorways : DungeonDoorwaysToOpen)
 		{
-			if (!Doors->bLowered && !Doors->bMoving)
+			if (!DungeonDoorways->bLowered && !DungeonDoorways->bMoving)
 			{
-				Doors->LowerDoor();
+				DungeonDoorways->LowerDoor();
 				bSwitchedOn = true;
 				bRotate = false;
 			}
