@@ -9,6 +9,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "Engine/SkeletalMeshSocket.h"
 #include "Math/UnrealMathUtility.h"
+#include "TimerManager.h"
+#include "GrappleObject.h"
 
 AGrapplingHook::AGrapplingHook()
 {
@@ -24,11 +26,32 @@ AGrapplingHook::AGrapplingHook()
 	bIsEquippedInRightHand = true;
 
 	Damage = 5.f;
+	bHasTarget = false;
+	ThrowDuration = 1.65f;
 }
 
 void AGrapplingHook::BeginPlay()
 {
 	Super::BeginPlay();
+}
+
+void AGrapplingHook::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	if (bHasTarget)
+	{
+		FVector CurrentLocation = GetActorLocation();
+		FVector SocketLocation = ToolOwner->GetMesh()->GetSocketLocation("RightHandSocket");
+		FVector Interp = FMath::VInterpConstantTo(CurrentLocation, SocketLocation, DeltaTime, 2200.f);
+		SetActorLocation(Interp);
+		if (SocketLocation.Equals(CurrentLocation,10.f))
+		{
+			SetActorLocation(SocketLocation);
+			AttachToOwner();
+			bHasTarget = false; 
+		}
+	}
 }
 
 void AGrapplingHook::PrimaryFunction()
@@ -37,7 +60,8 @@ void AGrapplingHook::PrimaryFunction()
 	if (!bThrown)
 	{
 		bThrown = true;
-		CollisionSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
+		//CollisionSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap); to make sure it can overlap Puzzle Channel
+		CollisionSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);
 
 		SkeletalMesh->SetSimulatePhysics(true);
 		SkeletalMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
@@ -52,6 +76,8 @@ void AGrapplingHook::PrimaryFunction()
 		SetActorRotation(HookRotation);
 
 		CollisionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+
+		GetWorldTimerManager().SetTimer(ThrownTimer, this, &AGrapplingHook::ResetHookParams, ThrowDuration);
 	}
 }
 
@@ -89,13 +115,30 @@ void AGrapplingHook::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AA
 			UGameplayStatics::ApplyDamage(Target, Damage, ToolInstigator, this, DamageTypeClass);
 			if (Target->Alive())
 			{
+				bHasTarget = true;
 				PullEnemy(Target);
-				ToolOwner->RecallGrapplingHook();
-				ResetHookPosition();
+				ResetHookParams();
+			}
+			if (ToolOwner->bIsZoomed)
+			{
+				ToolOwner->ToggleZoomCamera();
 			}
 		}
-		HookMovement->Velocity = FVector(0.f, 0.f, 0.f);
-		HookMovement->ProjectileGravityScale = 0.f;
+		else
+		{
+			AGrappleObject* GrappleObject = Cast<AGrappleObject>(OtherActor);
+			if (GrappleObject)
+			{
+				GrappleObject->GrappleObjectFuntion();
+				bHasTarget = true;
+				ResetHookParams();
+
+				if (ToolOwner->bIsZoomed)
+				{
+					ToolOwner->ToggleZoomCamera();
+				}
+			}
+		}
 	}
 }
 
@@ -107,25 +150,37 @@ void AGrapplingHook::OnOverlapEnd(UPrimitiveComponent* OverlappedComponent, AAct
 void AGrapplingHook::PullEnemy(AEnemy* Enemy)
 {
 	FVector Location = ToolOwner->GetActorLocation() + 75.f;
-	Enemy->SetActorLocation(Location);
+	Enemy->GetGrappled(Location);
 
 	Target = nullptr;
 }
 
-void AGrapplingHook::ResetHookPosition()
+void AGrapplingHook::ResetHookParams()
 {
-	bThrown = false;
-	CollisionSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
+	if (bThrown)
+	{
+		ToolOwner->RecallGrapplingHook();
+		HookMovement->Velocity = FVector(0.f, 0.f, 0.f);
+		HookMovement->ProjectileGravityScale = 0.f;
+		if (!bHasTarget)
+		{
+			bHasTarget = true;
+		}
 
+		//CollisionSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore); 
+		CollisionSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+
+		bThrown = false;
+	}
+}
+
+void AGrapplingHook::AttachToOwner()
+{
 	const USkeletalMeshSocket* RightHandSocket = ToolOwner->GetMesh()->GetSocketByName("RightHandSocket");
-	FVector SocketLocation = ToolOwner->GetMesh()->GetSocketLocation("RightHandSocket");
 
 	if (RightHandSocket)
 	{
 		RightHandSocket->AttachActor(this, ToolOwner->GetMesh());
 	}
 	SkeletalMesh->SetSimulatePhysics(false);
-
-	FMath::VInterpTo(GetActorLocation(), SocketLocation, GetWorld()->GetDeltaSeconds(), .1f);
-	//SetActorLocation(SocketLocation);
 }
