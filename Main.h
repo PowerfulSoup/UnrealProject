@@ -11,6 +11,7 @@ enum class EMovementStatus : uint8
 {
 	EMS_Normal UMETA(Display = "Normal"),
 	EMS_Sprinting UMETA(Display = "Sprinting"),
+	EMS_Climbing UMETA(Display = "Climbing"),
 	EMS_Dead UMETA(Display = "Dead"),
 
 	EMS_MAX UMETA(Display = "Default MAX")
@@ -135,8 +136,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Puzzles")
 		class ALockedDoor* LockedDoorInRange;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Items")
-		class AItemChest* ItemChestInRange;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "World")
+		class AInteractable* CurrentInteractable;
+
 
 	//Combat Varibles
 	UPROPERTY(BlueprintReadOnly)
@@ -360,7 +362,7 @@ public:
 		void UnlockDoor();
 
 	UFUNCTION()
-		void OpenItemChest(); //make to return item instead?
+		void SetCurrentInteractable(AInteractable* ItemToInteract);
 
 
 };
