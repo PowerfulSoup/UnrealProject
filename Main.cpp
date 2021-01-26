@@ -23,8 +23,8 @@
 #include "LockedDoor.h"
 #include "Components/SphereComponent.h"
 #include "Tool.h"
-#include "ItemChest.h"
 #include "Bow.h"
+#include "Interactable.h"
 
 // Sets default values
 AMain::AMain()
@@ -72,7 +72,7 @@ AMain::AMain()
 	Stamina = 200.f;
 	MaxStamina = 200.f;
 	Coins = 0.f;
-	RunningSpeed = 375.f; //650 default
+	RunningSpeed = 245.f; //325,650 default
 	SprintingSpeed = 750.f; //950 default
 	StaminaDrainRate = 25.f;
 	MinSprintStamina = 50.f;
@@ -530,6 +530,10 @@ void AMain::Block()
 void AMain::Die()
 {
 	if (MovementStatus == EMovementStatus::EMS_Dead) return;
+	if (bIsZoomed)
+	{
+		ToggleZoomCamera();
+	}
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && CombatMontage)
 	{
@@ -721,13 +725,9 @@ void AMain::EButtonDown()
 			SetActiveOverlappingItem(nullptr);
 		}
 	}
-	else if (LockedDoorInRange)
+	else if (CurrentInteractable)
 	{
-		UnlockDoor();
-	}
-	else if (ItemChestInRange)
-	{
-		OpenItemChest();
+		CurrentInteractable->InteractFunction(this);
 	}
 }
 
@@ -1000,12 +1000,6 @@ void AMain::ToggleZoomCamera()
 	}
 }
 
-
-void AMain::OpenItemChest()
-{
-	ItemChestInRange->OpenItemChest(this);
-}
-
 void AMain::SpawnTool()
 {
 	ATool* SpawnedTool;
@@ -1067,7 +1061,6 @@ bool AMain::BombCountCheck()
 	}
 }
 
-
 void AMain::RecallGrapplingHook()
 {
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
@@ -1076,4 +1069,9 @@ void AMain::RecallGrapplingHook()
 		AnimInstance->Montage_Play(CurrentToolMontage, 1.f);
 		AnimInstance->Montage_JumpToSection(FName("Pull"), CurrentToolMontage);
 	}
+}
+
+void AMain::SetCurrentInteractable(AInteractable* ItemToInteract)
+{
+	CurrentInteractable = ItemToInteract;
 }
