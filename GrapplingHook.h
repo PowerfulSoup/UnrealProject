@@ -20,16 +20,25 @@ public:
 
 	bool bThrown;
 
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly)
+	bool bHasTarget;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tool | Hook")
 		class UProjectileMovementComponent* HookMovement;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tool | Hook")
 		class AEnemy* Target;
 
+	FTimerHandle ThrownTimer;
+
+	float ThrowDuration;
+
+
 protected:
 	virtual void BeginPlay() override;
 
 public:
+	virtual void Tick(float DeltaTime) override;
 
 	virtual void PrimaryFunction() override;
 
@@ -48,5 +57,7 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void PullEnemy(AEnemy* Enemy);
 
-	void ResetHookPosition();
+	void ResetHookParams();
+
+	void AttachToOwner();
 };
