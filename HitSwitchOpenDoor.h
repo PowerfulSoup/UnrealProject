@@ -17,8 +17,11 @@ class RPG_API AHitSwitchOpenDoor : public AHitSwitch
 public:
 	AHitSwitchOpenDoor();
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Door")
-		TArray<class ADoor*> DoorsToOpen;
+	//UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "HitSwitch")
+	//	TArray<class ADoor*> DoorsToOpen;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "HitSwitch")
+		TArray<class ADungeonDoorway*> DungeonDoorwaysToOpen;
 
 protected:
 	virtual void BeginPlay() override;
