@@ -75,6 +75,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
 		class UAnimMontage* CombatMontage;
 
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
+	//	UAnimMontage* EntranceAnimation;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
 		bool bAttacking;
 
@@ -96,7 +99,9 @@ public:
 
 	bool bHasValidTarget;
 
+	bool bHooked;
 
+	FVector LocationToGrappleTo;
 
 
 protected:
@@ -164,11 +169,14 @@ public:
 
 	virtual FRotator GetLookAtRotationYaw(FVector Target);
 
-
 	//WORLD FUNCTIONS
 	UFUNCTION(BlueprintImplementableEvent, Category = "Combat")
 	void DropLoot();
 	
 	UFUNCTION()
 	virtual void FeedDoor();
+
+	//Tool Interactions
+	UFUNCTION()
+		virtual void GetGrappled(FVector Location);
 };
