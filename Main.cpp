@@ -35,11 +35,12 @@ AMain::AMain()
 	//Components
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(GetRootComponent());
-	CameraBoom->TargetArmLength = 250.f;
+	CameraBoom->TargetArmLength = 220.f;
+	CameraBoom->SocketOffset = FVector(0.f, 72.f, 50.f);
 	CameraBoom->bUsePawnControlRotation = true;
 	CameraBoom->bEnableCameraLag = true;
 	CameraBoom->CameraLagSpeed = 5.f;
-	CameraBoom->CameraLagMaxDistance = 50.f;
+	CameraBoom->CameraLagMaxDistance = 45.f;
 
 	GetCapsuleComponent()->SetCapsuleSize(36.f, 102.f, true);
 	
@@ -110,7 +111,7 @@ void AMain::BeginPlay()
 	Super::BeginPlay();
 
 	MainPlayerController = Cast<AMainPlayerController>(GetController());
-	Health = 75.f;
+	Health = 100.f;
 
 	CurrentToolMontage = WorldMontage;
 }
@@ -284,6 +285,18 @@ void AMain::MoveForward(float Value)
 	if ((Controller != nullptr) && (Value != 0.0f) && (!bIsZoomed) &&(!bBlocking) && (!bAttacking) && (MovementStatus != EMovementStatus::EMS_Dead))
 	{
 		//Find out which way is fwd
+		if (bIsPushing)
+		{
+			const FRotator Rotation = GetActorRotation();
+			const FRotator YawRotation(0.f, Rotation.Yaw, 0.f);
+
+			const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+			AddMovementInput(Direction, Value);
+
+			bMovingForward = true;
+		}
+		else
+		{
 			const FRotator Rotation = Controller->GetControlRotation();
 			const FRotator YawRotation(0.f, Rotation.Yaw, 0.f);
 
@@ -291,13 +304,15 @@ void AMain::MoveForward(float Value)
 			AddMovementInput(Direction, Value);
 
 			bMovingForward = true;
+		}
+
 	}
 }
 
 void AMain::MoveRight(float Value)
 {
 	bMovingRight = false;
-	if ((Controller != nullptr) && (Value != 0.0f) && (!bIsZoomed) && (!bAttacking) && (!bBlocking) && (MovementStatus != EMovementStatus::EMS_Dead) && (MovementStatus != EMovementStatus::EMS_Dead))
+	if ((Controller != nullptr) && (Value != 0.0f) && (!bIsZoomed) && (!bAttacking) && (!bBlocking) && (MovementStatus != EMovementStatus::EMS_Dead) && (!bIsPushing))
 	{
 		const FRotator Rotation = Controller->GetControlRotation();
 		const FRotator YawRotation(0.f, Rotation.Yaw, 0.f);
@@ -410,7 +425,10 @@ void AMain::RMBUp()
 
 void AMain::AttackEnd()
 {
-
+	//if (bLMBDown)
+	//{
+	//	Attack();
+	//}
 
 	if (!bLMBDown)
 	{
@@ -653,6 +671,45 @@ void AMain::UpdateCombatTarget(AActor* Target)
 		SetCombatTarget(Enemy);
 	}
 
+	//TArray<AActor*> OverlappingActors;
+	//GetOverlappingActors(OverlappingActors, EnemyFilter);
+
+	//if (OverlappingActors.Num() == 0)
+	//{
+	//	if (MainPlayerController)
+	//	{
+	//		MainPlayerController->RemoveEnemyHealthBar();
+	//	}
+	//	return;
+	//}
+
+	//AEnemy* ClosestEnemy = Cast<AEnemy>(OverlappingActors[0]);
+	//if (ClosestEnemy)
+	//{
+	//	FVector Location = GetActorLocation();
+	//	float MinDistance = (ClosestEnemy->GetActorLocation() - Location).Size();
+
+	//	for (auto Actor : OverlappingActors)
+	//	{
+	//		AEnemy* Enemy = Cast<AEnemy>(Actor);
+	//		if (Enemy)
+	//		{
+	//			float DistanceToActor = (Enemy->GetActorLocation() - Location).Size();
+	//			if (DistanceToActor < MinDistance)
+	//			{
+	//				MinDistance = DistanceToActor;
+	//				ClosestEnemy = Enemy;
+	//				
+	//			}
+	//		}
+	//	}
+	//	if (MainPlayerController)
+	//	{
+	//		MainPlayerController->DisplayEnemyHealthBar();
+	//	}
+	//	SetCombatTarget(ClosestEnemy);
+	//	bHasCombatTarget = true;
+	//}
 }
 
 
@@ -685,6 +742,9 @@ void AMain::EButtonDown()
 	}
 	else if (CurrentInteractable)
 	{
+		FRotator LookAtRotation = GetLookAtRotationYaw(CurrentInteractable->GetActorLocation());
+		LookAtRotation.Yaw = FMath::RoundToFloat(LookAtRotation.Yaw / 90.f) * 90.f;
+		SetActorRotation(LookAtRotation);
 		CurrentInteractable->InteractFunction(this);
 	}
 }
@@ -764,6 +824,14 @@ void AMain::ChangeKeyCount(int Amount)
 	KeyCount += Amount;
 }
 
+void AMain::UnlockDoor()
+{
+	if (KeyCount > 0)
+	{
+		LockedDoorInRange->UnlockDoor();
+		ChangeKeyCount(-1);
+	}
+}
 
 void AMain::EquipToolSlotOne()
 {
@@ -937,8 +1005,8 @@ void AMain::ToggleZoomCamera()
 	}
 	else
 	{
-		CameraBoom->TargetArmLength = 250.f;
-		CameraBoom->SocketOffset = FVector(0.f, 65.f, 55.f);
+		CameraBoom->TargetArmLength = 220.f;
+		CameraBoom->SocketOffset = FVector(0.f, 72.f, 50.f);
 		bUseControllerRotationYaw = false;
 		bUseControllerRotationPitch = false;
 
@@ -1024,4 +1092,23 @@ void AMain::RecallGrapplingHook()
 void AMain::SetCurrentInteractable(AInteractable* ItemToInteract)
 {
 	CurrentInteractable = ItemToInteract;
+}
+
+void AMain::Staggered()
+{
+	DisableInput(MainPlayerController);
+
+	if (bBlocking)
+	{
+		bRMBDown = false;
+		BlockEnd();
+	}
+
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance)
+	{
+		AnimInstance->Montage_Play(HitReactMontage, 1.f);
+		AnimInstance->Montage_JumpToSection(FName("Stagger"), HitReactMontage);
+	}
+
 }
