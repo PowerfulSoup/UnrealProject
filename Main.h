@@ -154,7 +154,7 @@ public:
 
 	bool bRMBDown;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Combat")
 	bool bHasCombatTarget;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
@@ -246,8 +246,8 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Anims")
 		UAnimMontage* WorldMontage;
 
-	//UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Anims")
-	//	UAnimMontage* ToolMontage;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Anims")
+		UAnimMontage* HitReactMontage;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anims")
 		UAnimMontage* CurrentToolMontage;
@@ -257,6 +257,7 @@ public:
 
 	//Combat Functions
 	void Attack();
+
 	UFUNCTION(BlueprintCallable)
 	void AttackEnd();
 
@@ -296,6 +297,8 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 		void PlaySwingSound();
+
+	void Staggered();
 
 	//Item Functions
 	void SetEquippedWeapon(AWeapon* WeaponToSet);
