@@ -49,6 +49,7 @@ AEnemy::AEnemy()
 	DeathDelay = 2.f;
 
 	bHasValidTarget = false;
+	bHooked = false;
 }
 
 // Called when the game starts or when spawned
@@ -89,6 +90,14 @@ void AEnemy::Tick(float DeltaTime)
 		FRotator InterpRotation = FMath::RInterpTo(GetActorRotation(), LookAtYaw, DeltaTime, 15.f);
 
 		SetActorRotation(InterpRotation);
+	}
+
+	if (bHooked)
+	{
+		AIController->StopMovement();
+		FVector CurrentLocation = GetActorLocation();
+		FVector Interp = FMath::VInterpConstantTo(CurrentLocation, LocationToGrappleTo, DeltaTime, 2200.f);
+		SetActorLocation(Interp);
 	}
 
 }
@@ -144,7 +153,11 @@ void AEnemy::CombatSphereOnOverlapBegin(UPrimitiveComponent* OverlappedComponent
 			if (Main)
 			{
 				bHasValidTarget = true;
-				AIController->StopMovement();
+				if (AIController)
+				{
+					AIController->StopMovement();
+				}
+				//AIController->StopMovement();
 				//Main->SetCombatTarget(this);
 				//Main->SetHasCombatTarget(true); ////COMMENTED OUT FOR TS
 				//Main->UpdateCombatTarget();
@@ -155,6 +168,11 @@ void AEnemy::CombatSphereOnOverlapBegin(UPrimitiveComponent* OverlappedComponent
 
 				float AttackTime = FMath::FRandRange(AttackMinTime, AttackMaxTime);
 				GetWorldTimerManager().SetTimer(AttackTimer, this, &AEnemy::Attack, AttackTime);
+
+				if (bHooked)
+				{
+					bHooked = false;
+				}
 			}
 	}
 
@@ -196,20 +214,21 @@ void AEnemy::CombatSphereOnOverlapEnd(UPrimitiveComponent* OverlappedComponent, 
 
 void AEnemy::MoveToTarget(AMain* Target)
 {
-	SetEnemyMovementStatus(EEnemyMovementStatus::EMS_MoveToTarget);
-
 	if (AIController)
-	{
-		FAIMoveRequest MoveRequest;
-		MoveRequest.SetGoalActor(Target);
-		MoveRequest.SetAcceptanceRadius(10.0f);
-		
-		FNavPathSharedPtr NavPath;
+		{
+			FAIMoveRequest MoveRequest;
+			MoveRequest.SetGoalActor(Target);
+			MoveRequest.SetAcceptanceRadius(10.0f);
 
-		AIController->MoveTo(MoveRequest, &NavPath);
+			FNavPathSharedPtr NavPath;
 
-	//	AIController->MoveToActor(Target, CombatSphere->GetScaledSphereRadius());
-	}
+			SetEnemyMovementStatus(EEnemyMovementStatus::EMS_MoveToTarget); // NEW
+
+			AIController->MoveTo(MoveRequest, &NavPath);
+
+			//	AIController->MoveToActor(Target, CombatSphere->GetScaledSphereRadius());
+		}
+
 }
 
 void AEnemy::WeaponHitBoxOnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -363,7 +382,6 @@ void AEnemy::Die(AActor* Causer)
 	AMain* Main = Cast<AMain>(CombatTarget); // Changed parater from Causer to Combat Target
 	if (Main)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Your message"));
 
 		Main->UpdateCombatTarget();
 	}
@@ -403,12 +421,25 @@ FRotator AEnemy::GetLookAtRotationYaw(FVector Target)
 
 int32 AEnemy::DecideNextCombatAction()
 {
-	int32 NextAction = FMath::RandRange(1, 3);
+	int32 NextAction = FMath::RandRange(1, 100);
+	NextAction /= 10;
+	FMath::RoundToInt(NextAction);
 	return NextAction;
 }
 
 void AEnemy::Strafe()
 {
-	
 	DecideNextCombatAction();
+}
+
+void AEnemy::GetGrappled(FVector Location)
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance)
+	{
+		AnimInstance->Montage_Play(CombatMontage, 1.f);
+		AnimInstance->Montage_JumpToSection(FName("Grappled"), CombatMontage);
+	}
+	LocationToGrappleTo = Location;
+	bHooked = true;
 }
