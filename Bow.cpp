@@ -6,6 +6,8 @@
 #include "Arrow.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
+#include "Enemy.h"
+#include "Kismet/KismetMathLibrary.h"
 
 
 
@@ -20,6 +22,7 @@ ABow::ABow()
 	ToolName = "Bow";
 
 	bDrawn = false;
+	bReady = false;
 	bIsEquippedInRightHand = false;
 }
 
@@ -35,9 +38,11 @@ void ABow::BeginPlay()
 
 void ABow::PrimaryFunction()//Draw/Fire
 {
+	Super::PrimaryFunction();
+
 	if (ToolOwner->ArrowAmmoCheck())
 	{	
-		if (bDrawn && ToolOwner->bLMBDown == false)
+		if (bReady && ToolOwner->bRMBDown == false) //This got UPDATED FROM Lmb TO Rmb
 		{
 			Fire();
 			ToolOwner->ArrowAmmo--;
@@ -52,24 +57,35 @@ void ABow::SecondaryFunction()//Zoom
 
 void ABow::Fire()
 {
-	if (bDrawn)
+	if (bReady)
 	{
-		ArrowPlaceHolder->SetHiddenInGame(true);
+		FRotator Direction;
+		if (ToolOwner->bHasCombatTarget)
+		{
+			AEnemy* EnemyTarget = ToolOwner->CombatTarget;
+			Direction = UKismetMathLibrary::FindLookAtRotation(ToolOwner->GetActorLocation(), EnemyTarget->GetActorLocation());	
+		}
+		else
+		{
+			Direction = SkeletalMesh->GetSocketRotation("ArrowSpawnSocket");
+		}
 
-		FRotator Direction = SkeletalMesh->GetSocketRotation("ArrowSpawnSocket");
+		ArrowPlaceHolder->SetHiddenInGame(true);
 		FVector Location = SkeletalMesh->GetSocketLocation("ArrowSpawnSocket");
 		FActorSpawnParameters SpawnInfo;
 
 		AArrow* SpawnedArrow = GetWorld()->SpawnActor<AArrow>(ArrowToSpawn->GetDefaultObject()->GetClass(), Location, Direction, SpawnInfo);
 
-		bDrawn = false;
+		bReady = false;
 
+		ToolOwner->PlayToolAnimation();
 	}
 }
 
 void ABow::Equip(class AMain* Char)
 {
 	Super::Equip(Char);
+	ToolOwner->SetToolType(EToolType::ETT_Bow);
 }
 
 void ABow::SetInstigator(AController* Inst)
@@ -90,3 +106,4 @@ void ABow::DrawArrowPlaceHolder(float X)
 	NewLocation.Y += X;
 	ArrowPlaceHolder->SetRelativeLocation(NewLocation);
 	}
+
